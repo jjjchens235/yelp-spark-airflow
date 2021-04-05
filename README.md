@@ -13,8 +13,8 @@ This project was based off of the architecture suggested in this [startdataengin
 1. Install [Docker](https://docs.docker.com/get-docker/)
 2. Install [docker-compose](https://docs.docker.com/compose/install/)
 3. AWS account credentials for S3 and EMR
-4. Move yelp [dataset](https://www.yelp.com/dataset/download) to S3
-4. Create a file `dags/aws_credentials.json` and update login and password
+4. Move yelp [dataset](https://www.yelp.com/dataset/download) to a folder named `yelp-spark-airflow/dags/yelp_dataset/`
+5. Create a file `dags/aws_credentials.json` and update login and password
 ```json
 {
 	 "login":"<access_key>",
