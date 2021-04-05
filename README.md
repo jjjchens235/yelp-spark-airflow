@@ -1,32 +1,33 @@
-## Purpose
-The minimum code necessary to set-up Apache/Airflow Docker image. User can clone repo and then spin up apache/airflow Docker container quickly.
+### Purpose
+Run spark job on Yelp dataset resulting in:
+- sentinmental analysis model that predicts user rating
+- weighted rating of each business where rating is adjusted based on quantity of reviews 
+	- i.e a 5 star restaurant with 5 reviews vs a 4 star restaurant with 1k reviews
 
-The puckel Docker image is great, but unfortunately it's no longer maintained, so I think it's better to switch over to the apache/airflow image.
+Design:
+Spark jobs are run from AWS EMR cluster and orchestrated through Apache Airflow. That means the Spark job is automated end-to-end.
 
-This repo's code is based on this Medium [article](https://towardsdatascience.com/apache-airflow-and-postgresql-with-docker-and-docker-compose-5651766dfa96). Overall it was a very useful article, but the author left out a few lines of code that are necessary for the image to function.
+This project was based off of the architecture suggested in this [startdataengineering.com](https://www.startdataengineering.com/post/how-to-submit-spark-jobs-to-emr-cluster-from-airflow/#clone-repository) post.
 
-It took me a while to figure out how to fill in the gaps, so I'm hoping this can help someone out :)
-
-
-### Instructions
+### Prereqs
 1. Install [Docker](https://docs.docker.com/get-docker/)
 2. Install [docker-compose](https://docs.docker.com/compose/install/)
-3. On the command line run `docker pull apache/airflow` to build the image
-4. Clone this repo
-5. Create an `.env` file in the root directory. Here is my .env file, customize it to your own needs:
-	- Of note is the Fernet Key, if you don't have one already, this [link](https://airflow.apache.org/docs/apache-airflow/stable/security/secrets/fernet.html) explains how to create one.
-``` sh
-AIRFLOW__CORE__EXECUTOR=LocalExecutor
-AIRFLOW__WEBSERVER__RBAC=False
-AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC=10
-AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL=60 # Prevent airflow from reloading the dags all the time and set. This is the main setting that reduces CPU load in the scheduler
-AIRFLOW__SCHEDULER__SCHEDULER_MAX_THREADS=2 # This should be set to (CPU Cores - 1)
-AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
-AIRFLOW__CORE__FERNET_KEY=${FERNET_KEY}
+3. AWS account credentials for S3 and EMR
+4. Move yelp [dataset](https://www.yelp.com/dataset/download) to S3
+4. Create a file `dags/aws_credentials.json` and update login and password
+```json
+{
+	 "login":"<access_key>",
+	 "password":"<access_key_secret>"
+}
 ```
-5. To spin up the server, run `docker-compose up -d`
-6. Go to http://localhost:8080/
-7. Login using these credentials
-	- UN: admin 
-	- PW: password
-8. To spin down, run `docker-compose down`
+5. To run Airflow job, go to http://localhost:8080/
+
+### EMR Learning Lessons
+1. When using `s3-dist-cp`, the --src arg MUST be a directory. If you want to only move specific files, you would add an additional regex argument
+2. If you want to ssh into the EMR cluster, you need to include this additional argument `{Ec2KeyName: <key>}` inside JOB_FLOW_OVERRIDES 
+3. If you run into any issues with your steps, the console provides very poor logging, your best bet is to SSH into the cluster itself
+	 1. The steps logging file is located here: `/mnt/var/log/hadoop/steps/`
+	2. To figure out the step ID, go to EMR console, and go to `Steps` tab
+4. When you ssh into EMR, if you want to locate the files you moved from S3 >> HDFS, you need to run this command: `hadoop fs -ls hdfs:///`
+5. Inside pyspark program, I had a hard time figuring out how to reference the HDFS files that were moved earlier. This [stackoverflow](https://stackoverflow.com/a/46165668) answer helped me understand.
